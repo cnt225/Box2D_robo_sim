@@ -1,0 +1,33 @@
+[project]
+name = "pybox-simulation"
+version = "0.1.0"
+description = "Box2D physics simulation project"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "box2d>=2.3.10",
+    "numpy>=1.24.4",
+    "pygame>=2.6.1",
+    "scipy>=1.10.1",
+    "cvxpy>=1.5.2",
+    "jinja2>=3.1.6",
+    "joblib>=1.4.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ipykernel>=6.29.5",
+    "ipython>=8.12.3",
+    "jupyter-client>=8.6.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "ipykernel>=6.29.5",
+    "ipython>=8.12.3",
+    "jupyter-client>=8.6.3",
+]
