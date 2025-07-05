@@ -3,7 +3,7 @@ import pygame, sys
 import numpy as np
 import argparse
 import cv2
-from env import make_world
+from env import make_world, list_available_pointclouds
 from simulation import RobotSimulation
 from render import draw_world
 
@@ -18,11 +18,14 @@ def parse_args():
                         help='Output video filename, default: robot_simulation.mp4')
     parser.add_argument('--fps', type=int, default=60,
                         help='Video FPS, default: 60')
-    parser.add_argument('--link-shape', choices=['rectangle', 'ellipse'], default='rectangle',
-                        help='Link shape (default: rectangle)')
+    parser.add_argument('--env', type=str, default=None,
+                        help='Pointcloud environment file (.ply). If not specified, uses static environment')
+    parser.add_argument('--geometry', type=int, default=0,
+                        help='Robot geometry ID (0-5), default: 0')
     parser.add_argument('--policy', choices=['potential_field', 'potential_field_pd', 'rmp'], 
                         default='potential_field_pd',
                         help='Control policy (default: potential_field_pd)')
+    
     return parser.parse_args()
 
 # target 위치 시각화 함수
@@ -45,6 +48,29 @@ def main():
     output_file = args.output
     fps = args.fps
     
+    # Environment validation
+    if args.env and args.env != 'static':
+        # Check if pointcloud file exists
+        import os
+        if not args.env.endswith('.ply'):
+            args.env += '.ply'
+        
+        pointcloud_path = os.path.join("pointcloud", "data", args.env)
+        if not os.path.exists(pointcloud_path):
+            print(f"Error: Pointcloud file not found: {pointcloud_path}")
+            print("Available pointcloud files:")
+            available_files = list_available_pointclouds()
+            if available_files:
+                for file in available_files:
+                    print(f"  - {file}.ply")
+            else:
+                print("  (No pointcloud files found)")
+            print("\nCreate pointclouds with: python create_pointcloud.py <name>")
+            sys.exit(1)
+    
+    # Determine environment type
+    env_type = 'static' if args.env == 'static' else 'pointcloud'
+    
     # results 폴더 생성
     import os
     results_dir = "results"
@@ -54,6 +80,9 @@ def main():
     # 출력 파일 경로를 results 폴더로 설정
     output_path = os.path.join(results_dir, output_file)
     
+    print(f"Environment: {env_type}")
+    if env_type == 'pointcloud':
+        print(f"Pointcloud file: {args.env}")
     print(f"Target position: {target}")
     print(f"Recording duration: {duration} seconds")
     print(f"Output file: {output_path}")
@@ -65,11 +94,21 @@ def main():
 
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
-    pygame.display.set_caption(f"Robot Arm Simulation - Recording - Target: {target}")
+    
+    # Set window caption based on environment type
+    if env_type == 'pointcloud':
+        caption = f"Robot Arm Simulation - Recording - Pointcloud: {args.env} - Target: {target}"
+    else:
+        caption = f"Robot Arm Simulation - Recording - Static Env - Target: {target}"
+    pygame.display.set_caption(caption)
+    
     clock = pygame.time.Clock()
 
     # 3) 월드·로봇·장애물 생성
-    world, links, obstacles = make_world(args.link_shape)
+    world, links, obstacles = make_world(
+        geometry_id=args.geometry,
+        env_file=args.env
+    )
 
     # 시뮬레이션 객체 생성
     simulation = RobotSimulation(world, links, obstacles, target, args.policy)
@@ -103,7 +142,10 @@ def main():
         
         # 정보 텍스트 표시
         font = pygame.font.Font(None, 36)
-        info_text = f"Target: ({target[0]:.1f}, {target[1]:.1f}) | Frame: {current_frame}/{total_frames}"
+        if env_type == 'pointcloud':
+            info_text = f"Target: ({target[0]:.1f}, {target[1]:.1f}) | PC: {args.env} | Frame: {current_frame}/{total_frames}"
+        else:
+            info_text = f"Target: ({target[0]:.1f}, {target[1]:.1f}) | Static Env | Frame: {current_frame}/{total_frames}"
         text_surface = font.render(info_text, True, (255, 255, 255))
         screen.blit(text_surface, (10, 10))
         
