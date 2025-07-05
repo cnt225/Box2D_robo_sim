@@ -29,6 +29,57 @@ def potential_field_policy(links, target, obstacles):
     #    여기서는 그냥 반환
     return F_total  # planar => (Fx, Fy)
 
+def potential_field_pd_policy(links, target, obstacles, prev_end_pos=None, dt=1/60):
+    """
+    PD 제어를 추가한 개선된 potential field policy
+    위치 오차 + 속도 감쇠 + 장애물 회피로 안정적인 수렴 달성
+    """
+    # 1) End-effector 좌표
+    end = links[-1].worldCenter
+    p_end = np.array(end)
+    
+    # 2) 속도 계산 (이전 위치가 있는 경우)
+    if prev_end_pos is not None:
+        v_end = (p_end - prev_end_pos) / dt
+    else:
+        v_end = np.zeros(2)
+
+    # 3) PD 제어: F = Kp * position_error - Kd * velocity
+    position_error = np.array(target) - p_end
+    distance_to_target = np.linalg.norm(position_error)
+    
+    # 적응적 게인: 타겟에 가까울수록 더 정밀한 제어
+    if distance_to_target > 2.0:
+        Kp = 15.0  # 멀리 있을 때는 강한 힘
+        Kd = 8.0
+    elif distance_to_target > 0.5:
+        Kp = 10.0  # 중간 거리
+        Kd = 12.0
+    else:
+        Kp = 8.0   # 가까이 있을 때는 부드럽게
+        Kd = 15.0  # 강한 감쇠
+    
+    F_att = Kp * position_error - Kd * v_end
+
+    # 4) Repulsion from obstacles (기존과 동일)
+    F_rep = np.zeros(2)
+    for obs in obstacles:
+        p_obs = np.array(obs.position)
+        v = p_end - p_obs
+        d = np.linalg.norm(v)
+        if d < 1.0:
+            F_rep += 2*(1.0/d - 1.0) * (v/d**3)
+
+    F_total = F_att + F_rep
+    
+    # 5) 힘 제한 (너무 큰 힘 방지)
+    max_force = 50.0
+    force_magnitude = np.linalg.norm(F_total)
+    if force_magnitude > max_force:
+        F_total = F_total * (max_force / force_magnitude)
+
+    return F_total
+
 def rmp_policy(links, target, obstacles):
     # 1) end-effector 위치
     p_ee = np.array(links[-1].worldCenter)

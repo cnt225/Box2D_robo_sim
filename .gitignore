@@ -56,6 +56,9 @@ joint_test.py
 *.mov
 *.wmv
 
+# Results folder
+results/
+
 # Logs
 *.log
 

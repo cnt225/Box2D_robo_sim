@@ -3,9 +3,8 @@ import pygame, sys
 import numpy as np
 import argparse
 import cv2
-from Box2D.b2 import revoluteJointDef
 from env import make_world
-from policy import potential_field_policy
+from simulation import RobotSimulation
 from render import draw_world
 
 # 명령행 인자 파싱
@@ -19,6 +18,11 @@ def parse_args():
                         help='Output video filename, default: robot_simulation.mp4')
     parser.add_argument('--fps', type=int, default=60,
                         help='Video FPS, default: 60')
+    parser.add_argument('--link-shape', choices=['rectangle', 'ellipse'], default='rectangle',
+                        help='Link shape (default: rectangle)')
+    parser.add_argument('--policy', choices=['potential_field', 'potential_field_pd', 'rmp'], 
+                        default='potential_field_pd',
+                        help='Control policy (default: potential_field_pd)')
     return parser.parse_args()
 
 # target 위치 시각화 함수
@@ -41,9 +45,18 @@ def main():
     output_file = args.output
     fps = args.fps
     
+    # results 폴더 생성
+    import os
+    results_dir = "results"
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+    
+    # 출력 파일 경로를 results 폴더로 설정
+    output_path = os.path.join(results_dir, output_file)
+    
     print(f"Target position: {target}")
     print(f"Recording duration: {duration} seconds")
-    print(f"Output file: {output_file}")
+    print(f"Output file: {output_path}")
     print(f"FPS: {fps}")
 
     # 2) 초기화
@@ -56,12 +69,14 @@ def main():
     clock = pygame.time.Clock()
 
     # 3) 월드·로봇·장애물 생성
-    world, links, obstacles = make_world()
-    joints = world.joints  # 3개 조인트
+    world, links, obstacles = make_world(args.link_shape)
+
+    # 시뮬레이션 객체 생성
+    simulation = RobotSimulation(world, links, obstacles, target, args.policy)
 
     # 4) 비디오 작성기 설정
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video_writer = cv2.VideoWriter(output_file, fourcc, fps, (SCREEN_W, SCREEN_H))
+    video_writer = cv2.VideoWriter(output_path, fourcc, fps, (SCREEN_W, SCREEN_H))
 
     # 5) 녹화 변수
     total_frames = int(duration * fps)
@@ -76,38 +91,8 @@ def main():
             if e.type == pygame.QUIT:
                 running = False
 
-        # policy → planar force
-        F = potential_field_policy(links, target, obstacles)
-
-        # Jacobian J2 (2×3) 해석적 계산
-        L = [3.0, 2.5, 2.0]  # 링크 길이
-        
-        # 각 조인트의 현재 각도 (누적)
-        q1 = joints[0].angle if len(joints) > 0 else 0
-        q2 = q1 + joints[1].angle if len(joints) > 1 else q1
-        q3 = q2 + joints[2].angle if len(joints) > 2 else q2
-        
-        # Jacobian 계산
-        J2 = np.zeros((2, 3))
-        
-        J2[0, 0] = -L[0]*np.sin(q1) - L[1]*np.sin(q2) - L[2]*np.sin(q3)
-        J2[1, 0] = L[0]*np.cos(q1) + L[1]*np.cos(q2) + L[2]*np.cos(q3)
-        
-        J2[0, 1] = -L[1]*np.sin(q2) - L[2]*np.sin(q3)
-        J2[1, 1] = L[1]*np.cos(q2) + L[2]*np.cos(q3)
-        
-        J2[0, 2] = -L[2]*np.sin(q3)
-        J2[1, 2] = L[2]*np.cos(q3)
-
-        # torque via J^T F
-        tau = J2.T.dot(F)
-
-        # torque 적용
-        for j, t in zip(joints, tau):
-            j.bodyB.ApplyTorque(t, wake=True)
-
-        # 물리 한 스텝
-        world.Step(TIME_STEP, 10, 10)
+        # 시뮬레이션 한 스텝 실행
+        step_info = simulation.step(debug=False)  # 비디오 녹화시에는 디버그 출력 끄기
 
         # 렌더링
         screen.fill((30, 30, 30))
@@ -151,7 +136,7 @@ def main():
     video_writer.release()
     pygame.quit()
     
-    print(f"Recording completed! Video saved as: {output_file}")
+    print(f"Recording completed! Video saved as: {output_path}")
     print(f"Total frames recorded: {current_frame}")
 
 if __name__ == "__main__":

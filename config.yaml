@@ -1,0 +1,15 @@
+# Robot Simulation Configuration
+# 로봇 시뮬레이션 설정 파일
+
+# 링크 형태 설정
+robot:
+  # 링크 형태: "rectangle" 또는 "ellipse"
+  link_shape: "rectangle"
+  
+  # 링크 기본 설정
+  link_lengths: [3.0, 2.5, 2.0]
+  link_widths: [0.3, 0.25, 0.2]
+  
+  # 타원형 링크 설정 (link_shape이 "ellipse"일 때만 사용)
+  ellipse_width: [1.5, 1.25, 1.0]   # 타원 가로 반지름
+  ellipse_height: [0.15, 0.125, 0.1] # 타원 세로 반지름
