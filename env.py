@@ -5,7 +5,7 @@ import os
 import numpy as np
 from typing import List, Tuple, Optional
 from pointcloud import PointcloudLoader
-from robot_config import get_geometry_config
+from config_loader import get_geometry_config
 
 def create_ellipse_vertices(width, height, num_points=16):
     """타원형 버텍스 생성"""

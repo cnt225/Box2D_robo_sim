@@ -40,8 +40,18 @@ args = parse_args()
 
 # Handle --list-geometries flag
 if args.list_geometries:
-    from robot_config import list_geometries
-    list_geometries()
+    from config_loader import get_config
+    config = get_config()
+    print("Available Robot Geometries:")
+    for geo_id, geo_config in config.get_robot_geometries().items():
+        shape = geo_config['link_shape']
+        name = geo_config['name']
+        desc = geo_config['description']
+        lengths = geo_config['link_lengths']
+        max_reach = geo_config.get('max_reach', 'N/A')
+        print(f"  {geo_id}: {name} ({shape}) - {desc}")
+        print(f"      Lengths: {lengths} | Max Reach: {max_reach}")
+        print()
     sys.exit(0)
 
 # Validate pointcloud file if specified

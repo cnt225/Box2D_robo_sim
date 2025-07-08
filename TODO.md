@@ -82,16 +82,20 @@ python record_video.py --target 5.0 5.0 --env static --geometry 2 --duration 10 
 ## 우선순위 높음 🔥
 
 ### 1. Configuration 시스템 개선
-- [ ] **robot_config.py → config.yaml 이전**
-  - 현재 코드에 하드코딩된 robot geometry 설정들을 config.yaml로 이동
-  - 6개 기본 geometry 외에 더 다양한 설정 추가
-  - Link lengths, widths, shapes 등 모든 robot 파라미터 통합 관리
+- ✅ **robot_config.py → config.yaml 이전**
+  - ✅ 현재 코드에 하드코딩된 robot geometry 설정들을 config.yaml로 이동
+  - ✅ 6개 기본 geometry 외에 더 다양한 설정 추가 (max_reach 포함)
+  - ✅ Link lengths, widths, shapes 등 모든 robot 파라미터 통합 관리
+  - ✅ ConfigLoader 클래스 구현으로 yaml 기반 설정 로딩
+  - ✅ robot_config.py를 config.yaml 기반으로 재작성
+  - ✅ 기능 검증 완료 (--list-geometries, 시뮬레이션 실행)
   
 - [ ] **분산된 설정 요소들 통합**
-  - pointcloud 생성 관련 기본값들 (resolution, noise_level, clustering 등)
-  - 시뮬레이션 파라미터들 (FPS, screen size, physics 설정 등)
-  - Control policy 관련 파라미터들
-  - 모든 설정을 config.yaml에 중앙 집중식 관리
+  - [ ] main.py, record_video.py의 하드코딩 파라미터들 config.yaml로 이전
+  - [ ] pointcloud 생성 관련 기본값들 (resolution, noise_level, clustering 등)
+  - [ ] 시뮬레이션 파라미터들 (FPS, screen size, physics 설정 등)
+  - [ ] Control policy 관련 파라미터들
+  - [ ] 모든 설정을 config.yaml에 중앙 집중식 관리
 
 ### 2. Robot Configuration 확장
 - [ ] **적절한 robot geometry 생성**
