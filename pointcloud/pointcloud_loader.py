@@ -17,7 +17,7 @@ import warnings
 class PointcloudLoader:
     """포인트클라우드 파일을 로드하고 Box2D 환경으로 변환하는 클래스"""
     
-    def __init__(self, data_dir: str = "pointcloud/data"):
+    def __init__(self, data_dir: str = "data/pointcloud"):
         """
         Args:
             data_dir: 포인트클라우드 데이터 디렉토리
@@ -97,24 +97,69 @@ class PointcloudLoader:
         clusters = self._cluster_points(points, clustering_eps, min_samples)
         
         # 각 클러스터를 장애물로 변환
-        for cluster_points in clusters:
+        for i, cluster_points in enumerate(clusters):
             if len(cluster_points) < 3:  # 최소 3개 포인트 필요
+                print(f"Cluster {i}: Skipping - only {len(cluster_points)} points")
                 continue
                 
             try:
+                print(f"\nCluster {i}: Processing {len(cluster_points)} points")
+                
                 if obstacle_type == 'polygon':
+                    print(f"Cluster {i}: Creating polygon (forced)")
                     self._create_polygon_obstacle(world, cluster_points)
                 elif obstacle_type == 'circle':
+                    print(f"Cluster {i}: Creating circle (forced)")
                     self._create_circle_obstacle(world, cluster_points)
                 elif obstacle_type == 'auto':
-                    # 포인트 수에 따라 자동 선택
-                    if len(cluster_points) > 20:
-                        self._create_polygon_obstacle(world, cluster_points)
+                    # 단순하고 효과적인 형태 분석
+                    center = np.mean(cluster_points, axis=0)
+                    distances = np.linalg.norm(cluster_points - center, axis=1)
+                    
+                    # 1. 거리 변동성 (원형일수록 변동성이 낮음)
+                    std_dist = np.std(distances)
+                    mean_dist = np.mean(distances)
+                    circularity = std_dist / (mean_dist + 1e-6)
+                    
+                    # 2. Convex Hull 정점 수 (원형일수록 많은 정점)
+                    try:
+                        from scipy.spatial import ConvexHull
+                        hull = ConvexHull(cluster_points)
+                        hull_vertices = len(hull.vertices)
+                    except:
+                        hull_vertices = 4  # 기본값
+                    
+                    # 3. 클러스터 크기 (작은 것은 원형으로)
+                    cluster_size = len(cluster_points)
+                    
+                    # 단순한 규칙 기반 판정
+                    is_circle = False
+                    reason = ""
+                    
+                    # 매우 원형적인 특성 (변동성이 매우 낮고 정점이 많음)
+                    if circularity < 0.05 and hull_vertices > 15:
+                        is_circle = True
+                        reason = f"very_circular(circ={circularity:.3f}, hull_v={hull_vertices})"
+                    
+                    # 작고 둥근 클러스터
+                    elif circularity < 0.1 and cluster_size < 40:
+                        is_circle = True
+                        reason = f"small_round(circ={circularity:.3f}, size={cluster_size})"
+                    
+                    # 기본적으로는 다각형으로 (더 정확한 재구성)
                     else:
+                        is_circle = False
+                        reason = f"polygon_default(circ={circularity:.3f}, hull_v={hull_vertices}, size={cluster_size})"
+                    
+                    if is_circle:
+                        print(f"Cluster {i}: Creating circle (auto, {reason})")
                         self._create_circle_obstacle(world, cluster_points)
+                    else:
+                        print(f"Cluster {i}: Creating polygon (auto, {reason})")
+                        self._create_polygon_obstacle(world, cluster_points)
                         
             except Exception as e:
-                warnings.warn(f"Failed to create obstacle from cluster: {e}")
+                warnings.warn(f"Failed to create obstacle from cluster {i}: {e}")
                 continue
         
         self.world = world
@@ -155,18 +200,37 @@ class PointcloudLoader:
             for point in hull_points:
                 vertices.append((float(point[0]), float(point[1])))
             
+            print(f"Original polygon: {len(vertices)} vertices from {len(points)} points")
+            
             # 정점 수 제한 (Box2D는 최대 8개)
             if len(vertices) > 8:
                 # 균등하게 샘플링
                 indices = np.linspace(0, len(vertices)-1, 8, dtype=int)
                 vertices = [vertices[i] for i in indices]
+                print(f"Reduced to {len(vertices)} vertices for Box2D")
             
             # 정점이 3개 미만이면 스킵
             if len(vertices) < 3:
+                print(f"Skipping polygon with only {len(vertices)} vertices")
                 return
             
             # 반시계방향으로 정렬 (Box2D 요구사항)
             vertices = self._ensure_ccw(vertices)
+            
+            # 중심점과 크기 계산
+            center = np.mean(vertices, axis=0)
+            # 다각형 크기 확인 (최대 거리)
+            max_distance = 0
+            for vertex in vertices:
+                dist = np.sqrt((vertex[0] - center[0])**2 + (vertex[1] - center[1])**2)
+                max_distance = max(max_distance, dist)
+            
+            print(f"Creating polygon: center=({center[0]:.2f}, {center[1]:.2f}), {len(vertices)} vertices, max_size={max_distance:.2f}")
+            
+            # 다각형이 너무 작으면 스킵
+            if max_distance < 0.1:
+                print(f"Skipping polygon with max_size={max_distance:.3f} (too small)")
+                return
             
             # Box2D body 생성
             bodyDef = Box2D.b2BodyDef()
@@ -193,10 +257,14 @@ class PointcloudLoader:
             # 중심점과 반지름 계산
             center = np.mean(points, axis=0)
             distances = np.linalg.norm(points - center, axis=1)
-            radius = np.mean(distances)
             
-            # 최소/최대 반지름 제한
-            radius = max(0.1, min(radius, 2.0))
+            # 반지름을 최대 거리의 80% 정도로 설정 (더 정확한 근사)
+            radius = np.percentile(distances, 85)  # 85 퍼센타일 사용
+            
+            # 최소/최대 반지름 제한 (더 합리적인 범위)
+            radius = max(0.05, min(radius, 5.0))
+            
+            print(f"Creating circle: center=({center[0]:.2f}, {center[1]:.2f}), radius={radius:.2f}")
             
             # Box2D body 생성
             bodyDef = Box2D.b2BodyDef()
@@ -206,7 +274,7 @@ class PointcloudLoader:
             
             # 원형 shape 생성
             shape = Box2D.b2CircleShape()
-            shape.radius = radius
+            shape.radius = float(radius)
             
             # Fixture 생성
             fixtureDef = Box2D.b2FixtureDef()
@@ -314,13 +382,13 @@ class PointcloudLoader:
 
 
 # 편의 함수들
-def load_pointcloud_world(filename: str, data_dir: str = "pointcloud/data", **kwargs) -> Box2D.b2World:
+def load_pointcloud_world(filename: str, data_dir: str = "data/pointcloud", **kwargs) -> Box2D.b2World:
     """포인트클라우드에서 Box2D 월드를 로드하는 편의 함수"""
     loader = PointcloudLoader(data_dir)
     return loader.load_and_create_world(filename, **kwargs)
 
 
-def list_pointclouds(data_dir: str = "pointcloud/data") -> List[str]:
+def list_pointclouds(data_dir: str = "data/pointcloud") -> List[str]:
     """사용 가능한 포인트클라우드 목록을 반환하는 편의 함수"""
     loader = PointcloudLoader(data_dir)
     return loader.list_available_pointclouds()

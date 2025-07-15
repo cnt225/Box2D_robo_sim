@@ -50,34 +50,51 @@ def main():
     
     # Environment validation
     if args.env and args.env != 'static':
-        # Check if pointcloud file exists
         import os
-        if not args.env.endswith('.ply'):
-            args.env += '.ply'
         
-        pointcloud_path = os.path.join("pointcloud", "data", args.env)
+        # Convert environment name to full path: env_name -> data/env_name/env_name.ply
+        env_name = args.env
+        if env_name.endswith('.ply'):
+            env_name = env_name[:-4]  # Remove .ply extension if provided
+        
+        # Construct the expected path
+        pointcloud_path = os.path.join("pointcloud", "data", env_name, f"{env_name}.ply")
+        
         if not os.path.exists(pointcloud_path):
             print(f"Error: Pointcloud file not found: {pointcloud_path}")
-            print("Available pointcloud files:")
-            available_files = list_available_pointclouds()
-            if available_files:
-                for file in available_files:
-                    print(f"  - {file}.ply")
+            print("Available environments:")
+            
+            # 데이터 디렉토리 설정  
+            data_dir = os.path.join("data", "pointcloud")
+            if os.path.exists(data_dir):
+                loader = PointcloudLoader(data_dir)
+                available_envs = loader.list_available_environments()
+                
+                if available_envs:
+                    for env_name in sorted(available_envs):
+                        print(f"  - {env_name}")
+                else:
+                    print("  (No environment folders found)")
             else:
-                print("  (No pointcloud files found)")
-            print("\nCreate pointclouds with: python create_pointcloud.py <name>")
+                print("  (pointcloud/data directory not found)")
+            
+            print(f"\nUsage: --env <environment_name>")
+            print(f"Example: --env circles_only")
             sys.exit(1)
+        
+        # Update args.env to use the environment name (not full path)
+        args.env = env_name
     
     # Determine environment type
     env_type = 'static' if args.env == 'static' else 'pointcloud'
     
-    # results 폴더 생성
+    # simulation_videos 폴더 생성
     import os
-    results_dir = "results"
+    results_dir = "data/results/simulation_videos"
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
     
-    # 출력 파일 경로를 results 폴더로 설정
+    # 출력 파일 경로를 simulation_videos 폴더로 설정
     output_path = os.path.join(results_dir, output_file)
     
     print(f"Environment: {env_type}")

@@ -99,8 +99,16 @@ def _make_pointcloud_world(geometry_config, pointcloud_file):
     loader = PointcloudLoader()
     
     try:
-        W = loader.load_and_create_world(pointcloud_file)
-        print(f"Loaded pointcloud environment from {pointcloud_file}")
+        # Convert environment name to proper path format: env_name -> env_name/env_name
+        env_name = pointcloud_file
+        if env_name.endswith('.ply'):
+            env_name = env_name[:-4]  # Remove .ply extension if provided
+        
+        # Use the folder/file format: env_name/env_name
+        pointcloud_path = f"{env_name}/{env_name}"
+        
+        W = loader.load_and_create_world(pointcloud_path)
+        print(f"Loaded pointcloud environment from {pointcloud_path}")
         
     except Exception as e:
         print(f"Failed to load pointcloud environment: {e}")
@@ -163,7 +171,7 @@ def _create_robot_links(W, geometry_config):
     return links
 
 
-def list_available_pointclouds(data_dir="pointcloud/data"):
+def list_available_pointclouds(data_dir="data/pointcloud"):
     """List available pointcloud files"""
     loader = PointcloudLoader(data_dir)
     return loader.list_available_pointclouds()

@@ -56,8 +56,45 @@ joint_test.py
 *.mov
 *.wmv
 
-# Results folder
-results/
+# Results folder (이제 data/results로 이동됨)
+# results/
+
+# === 생성된 데이터 폴더들 ===
+# 모든 데이터는 이제 data/ 하위에 통합 관리됨
+# data/pointcloud/ - 포인트클라우드 환경 데이터
+# data/pose/ - 포즈 생성 결과
+# data/results/ - 시뮬레이션 결과 및 시각화
+# pointcloud/data/ (이제 data/pointcloud로 이동됨)
+
+# === 생성된 파일들 ===
+# PLY 포인트클라우드 파일들 (이제 *.ply는 상단에 포함됨)
+*.ply
+
+# 환경 메타데이터 파일들
+*_meta.json
+
+# Shape 라이브러리 파일들
+*concave_shapes*.json
+*circle_envs*.json
+test_*.json
+
+# 시각화 이미지들
+*_visualization.jpg
+*_visualization.png
+*_scene.jpg
+*_scene.png
+
+# SVG 테스트 파일들
+test_*.svg
+
+# === 임시 및 테스트 파일들 ===
+# 임시 테스트 스크립트들
+test_adapter.py
+*_test.py
+
+# 임시 환경 파일들
+temp_*.py
+*_temp.*
 
 # Logs
 *.log
@@ -76,3 +113,18 @@ results/
 # Temporary files
 *.tmp
 *.temp
+
+# === 기타 생성된 파일들 ===
+# 설정 백업들
+config_*.yaml
+*_config.yaml
+
+# 출력 디렉토리들
+output/
+generated/
+exports/
+
+# Data directories and generated files
+data/
+*.ply
+*.mp4

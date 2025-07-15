@@ -56,23 +56,37 @@ if args.list_geometries:
 
 # Validate pointcloud file if specified
 if args.env and args.env != 'static':
-    # Check if pointcloud file exists
     import os
-    if not args.env.endswith('.ply'):
-        args.env += '.ply'
     
-    pointcloud_path = os.path.join("pointcloud", "data", args.env)
+    # Convert environment name to full path: env_name -> data/env_name/env_name.ply
+    env_name = args.env
+    if env_name.endswith('.ply'):
+        env_name = env_name[:-4]  # Remove .ply extension if provided
+    
+    # Construct the expected path
+    pointcloud_path = os.path.join("pointcloud", "data", env_name, f"{env_name}.ply")
+    
     if not os.path.exists(pointcloud_path):
         print(f"Error: Pointcloud file not found: {pointcloud_path}")
-        print("Available pointcloud files:")
-        available = list_available_pointclouds()
-        if available:
-            for file in available:
-                print(f"  - {file}.ply")
+        print("Available environments:")
+        
+        # 환경 로딩
+        print(f"🌍 Environment: {config['environment']}")
+        
+        # 데이터 디렉토리 설정
+        data_dir = os.path.join("data", "pointcloud")
+        
+        if os.path.exists(data_dir):
+            loader = PointcloudLoader(data_dir)
         else:
-            print("  (No pointcloud files found)")
-        print("\nCreate pointclouds with: python create_pointcloud.py <n>")
+            print("  (pointcloud/data directory not found)")
+        
+        print(f"\nUsage: --env <environment_name>")
+        print(f"Example: --env circles_only")
         sys.exit(1)
+    
+    # Update args.env to use the environment name (not full path)
+    args.env = env_name
 
 # Determine environment type
 env_type = 'static' if args.env == 'static' else 'pointcloud'

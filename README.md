@@ -4,46 +4,132 @@
 
 ## Project Architecture
 
-This project uses a **dual-module architecture** for clean separation of concerns:
+이 프로젝트는 **다중 모듈 아키텍처**로 기능을 명확히 분리하여 구성되어 있습니다:
 
 ### Module 1: Pointcloud Generation (`pointcloud/`)
 - **Purpose**: Generate, extract, and manage pointcloud data for environments
 - **Key Components**:
   - `create_pointcloud.py` - Generate pointclouds with clustering/obstacle options
-  - `pointcloud_extractor.py` - Extract pointclouds from physics environments
   - `pointcloud_loader.py` - Load and reconstruct environments from pointclouds
-  - `data/` - Storage for generated pointcloud files (PLY format)
+  - `utils/visualize_pointcloud.py` - Visualize pointcloud data with robot base position
+  - `utils/quick_visualize.py` - 🆕 **Quick environment visualization without regenerating all images**
+  - `random_environment_generator.py` - Generate diverse environments
+  - `concave_shape_generator/` - 🆕 **Complete concave obstacle generation system**
+  - `data/` - **Organized folder structure**: `data/env_name/` with PLY, metadata, and images
 
-### Module 2: Main Simulation (`main.py`, `record_video.py`)
+### Module 2: Pose Generation (`pose/`)
+- **Purpose**: 🆕 **Generate random robot poses and collision detection**
+- **Key Components**:
+  - `random_pose_generator.py` - Generate random valid robot poses
+  - `collision_detector.py` - Detect collisions between robot and environment
+  - `pose_pipeline.py` - Complete automated pose generation workflow
+
+### Module 3: Main Simulation (`main.py`, `record_video.py`)
 - **Purpose**: Load pre-generated environments and run robot simulations
 - **Key Components**:
   - `main.py` - Real-time simulation with visualization
   - `record_video.py` - Video recording functionality
   - `env.py` - Robot environment setup using geometry configs
-  - `robot_config.py` - Pre-defined robot geometry configurations
   - `policy.py` - Control policies (potential field, PD, RMP)
   - `simulation.py` - Core simulation logic
   - `render.py` - Visualization rendering
+
+## ✨ Latest Major Features (2025-01-2025)
+
+### 🎯 **Quick Environment Visualization System**
+빠른 환경 조회 및 시각화를 위한 새로운 도구:
+```bash
+# 특정 환경 빠른 시각화 (예: #65번 환경)
+python pointcloud/utils/quick_visualize.py circle_envs_10k 65
+
+# 환경 정보와 함께 시각화
+python pointcloud/utils/quick_visualize.py random_hard_01 --show-info
+```
+
+### 🔷 **Concave Obstacle Generation System**
+복잡한 오목 형태 장애물 생성 및 Box2D 통합:
+- **Concave Shape Generator**: L-shape, U-shape 등 복잡한 형태 생성
+- **Box2D Integration**: 자동 Convex Decomposition으로 물리 엔진 호환성
+- **Multiple Methods**: Triangulation, Convex Hull, Multiple Fixtures 지원
+- **Complete Pipeline**: SVG → JSON → Box2D Bodies 완전 자동화
+
+**파일 구조:**
+```
+pointcloud/concave_shape_generator/
+├── concave_shape_generator.py     # 오목 형태 생성기
+├── concave_box2d_integration.py   # Box2D 통합 및 변환
+├── concave_environment_generator.py # 환경 배치 시스템
+└── shapes/                        # 생성된 SVG/JSON 라이브러리
+```
+
+### 🤖 **Robot Pose Generation System**
+로봇 포즈 생성 및 충돌 검사 시스템:
+- **Random Pose Generator**: 6가지 로봇 구성별 랜덤 포즈 생성
+- **Collision Detection**: PLY 환경과 로봇 링크 간 정밀 충돌 검사
+- **Complete Pipeline**: 환경 로드 → 포즈 생성 → 충돌 검사 → 결과 저장
+
+**성능:**
+- **392+ poses/sec** 처리 속도
+- **Rectangle/Ellipse** 링크 형태 모두 지원
+- **JSON 형식** 결과 저장 (통계 포함)
+
+**사용법:**
+```bash
+# 충돌 없는 포즈 20개 생성
+python pose/pose_pipeline.py data/pointcloud/circles_only/circles_only.ply 0 --num_poses 20 --output my_poses.json
+
+# 분석 포함 생성
+python pose/pose_pipeline.py data/pointcloud/random_hard_01/random_hard_01.ply 2 --analyze --output hard_poses.json
+```
+
+### 📁 **Enhanced File Organization**
+- **대용량 데이터 .gitignore 처리**: 557MB 포인트클라우드 데이터 제외
+- **구조적 정리**: 기능별 모듈화 (pointcloud/, pose/, 메인 시뮬레이션)
+- **자동 빌드 제외**: PLY, JSON, 임시 파일들 git 추적 제외
 
 ## Project Structure
 
 ```
 robot_sim_v1/
-├── pointcloud/                    # Module 1: Pointcloud generation & management
-│   ├── create_pointcloud.py       # Generate pointclouds with clustering options
-│   ├── pointcloud_extractor.py    # Extract pointclouds from environments
-│   ├── pointcloud_loader.py       # Load and reconstruct environments
-│   └── data/                      # Generated pointcloud files (PLY format)
-├── main.py                        # Module 2: Real-time simulation
-├── record_video.py                # Video recording functionality
-├── env.py                         # Environment setup using geometry configs
-├── robot_config.py                # Robot geometry configurations
-├── policy.py                      # Control policies
-├── simulation.py                  # Core simulation logic
-├── render.py                      # Visualization rendering
-├── results/                       # Generated video files (auto-created)
-├── pyproject.toml                 # Package configuration
-└── README.md                      # This file
+├── pointcloud/                           # Module 1: Pointcloud & Environment
+│   ├── create_pointcloud.py              # Generate pointclouds
+│   ├── pointcloud_loader.py              # Load environments
+│   ├── random_environment_generator.py   # Generate diverse environments
+│   ├── utils/                            # 🆕 Utility functions
+│   │   ├── visualize_pointcloud.py       # Visualize environments
+│   │   ├── quick_visualize.py            # Quick environment viewer
+│   │   └── svg_to_ply_converter.py       # SVG conversion utility
+│   ├── concave_shape_generator/          # 🆕 Concave obstacle system
+│   │   ├── concave_shape_generator.py    # Shape generation
+│   │   ├── concave_box2d_integration.py  # Box2D integration
+│   │   ├── concave_environment_generator.py # Environment placement
+│   │   └── shapes/                       # Shape library (SVG/JSON)
+│   └── data/                             # Environment data folders
+│       ├── circles_only/                 # Circle-only environments
+│       ├── rectangles_only/              # Rectangle environments
+│       ├── polygons_only/                # Polygon environments
+│       ├── random_*/                     # Mixed environments
+│       └── circle_envs_10k/              # 🎯 Large-scale dataset
+├── pose/                                 # Module 2: Pose generation
+│   ├── random_pose_generator.py          # Core pose generation
+│   ├── batch_pose_generator.py           # Batch pose generation
+│   ├── pose_visualizer.py                # Pose visualization
+│   ├── collision_detector.py             # Collision detection
+│   └── pose_pipeline.py                  # Complete workflow
+├── data/                                 # 🆕 Unified data directory
+│   ├── pointcloud/                       # Environment pointcloud data
+│   ├── pose/                             # Generated pose data
+│   └── results/                          # Results directory
+│       ├── poses/                        # Pose visualization images
+│       └── simulation_videos/            # Simulation recordings
+├── main.py                               # Module 3: Real-time simulation
+├── record_video.py                       # Video recording
+├── env.py                                # Environment setup
+├── policy.py                             # Control policies
+├── simulation.py                         # Core simulation logic
+├── render.py                             # Visualization rendering
+├── config.yaml                           # Central configuration
+└── README.md                             # This file
 ```
 
 ## Installation & Setup
@@ -58,7 +144,7 @@ source pybox2d/bin/activate  # macOS/Linux
 
 ### 2. Install All Dependencies
 ```bash
-# Install all required packages from pyproject.toml
+# Install all required packages
 uv pip install -e .
 
 # For development (includes Jupyter support)
@@ -67,89 +153,143 @@ uv pip install -e ".[dev]"
 
 ## Workflow Overview
 
-1. **Generate Pointclouds** (Module 1): Use `pointcloud/create_pointcloud.py` to extract pointclouds from environments with various clustering and obstacle options
-2. **Run Simulations** (Module 2): Use `main.py` or `record_video.py` to load environments and run robot simulations with simple geometry selection
+1. **Generate Environments**: Use `pointcloud/create_pointcloud.py` for basic environments
+2. **Create Concave Obstacles**: Use `concave_shape_generator/` for complex shapes
+3. **Quick Visualization**: Use `quick_visualize.py` for fast environment inspection
+4. **Generate Robot Poses**: Use `pose/pose_pipeline.py` for collision-free poses
+5. **Run Simulations**: Use `main.py` or `record_video.py` for robot control
 
 ## Usage
 
-### 1. Generate Pointcloud Environments (Module 1)
+### 1. Quick Environment Visualization 🆕
 
-First, generate pointcloud data with desired clustering and obstacle configurations:
+빠른 환경 조회 및 시각화:
+
+```bash
+# 특정 환경 번호로 빠른 조회
+python pointcloud/utils/quick_visualize.py circle_envs_10k 65
+
+# 환경 정보 표시
+python pointcloud/utils/quick_visualize.py random_hard_01 --show-info
+
+# 이미지 저장
+python pointcloud/utils/quick_visualize.py polygons_only --save-image
+```
+
+### 2. Concave Obstacle Generation 🆕
+
+복잡한 오목 형태 장애물 생성:
+
+```bash
+# 기본 L-shape 장애물 생성
+python pointcloud/concave_shape_generator/concave_shape_generator.py
+
+# Box2D 통합 테스트
+python pointcloud/concave_shape_generator/concave_box2d_integration.py
+
+# 완전한 환경에 배치
+python pointcloud/concave_shape_generator/concave_environment_generator.py
+```
+
+### 3. Robot Pose Generation 🆕
+
+로봇 포즈 생성 및 충돌 검사:
+
+```bash
+# 기본 포즈 생성 (20개)
+python pose/pose_pipeline.py data/pointcloud/circles_only/circles_only.ply 0 --num_poses 20
+
+# JSON 파일로 저장 + 분석
+python pose/pose_pipeline.py data/pointcloud/random_hard_01/random_hard_01.ply 2 --num_poses 50 --output hard_poses.json --analyze
+
+# 고급 옵션 (안전 여유거리, 최대 시도 횟수)
+python pose/pose_pipeline.py data/pointcloud/polygons_only/polygons_only.ply 1 --num_poses 100 --safety_margin 0.1 --max_attempts 2000
+```
+
+### 4. Generate Pointcloud Environments
+
+다양한 환경 타입 생성:
 
 ```bash
 # Navigate to pointcloud directory
 cd pointcloud
 
-# Generate pointcloud with default settings
-python create_pointcloud.py --output_name my_env
+# Generate basic environment types
+python create_pointcloud.py --env-type random --obstacle-types circle --output-name circles_only --seed 111
+python create_pointcloud.py --env-type random --obstacle-types rectangle --output-name rectangles_only --seed 222
 
-# Generate with specific clustering parameters
-python create_pointcloud.py --output_name dense_env --clustering_eps 0.2 --min_samples 3
-
-# Generate with different obstacle types
-python create_pointcloud.py --output_name circle_env --obstacle_type circle
-python create_pointcloud.py --output_name polygon_env --obstacle_type polygon
-
-# Generate with custom resolution and noise
-python create_pointcloud.py --output_name precise_env --resolution 0.03 --noise_level 0.005
-
-# See all available options
-python create_pointcloud.py --help
+# Generate mixed difficulty environments
+python create_pointcloud.py --env-type random --difficulty easy --output-name random_easy_01 --seed 42
+python create_pointcloud.py --env-type random --difficulty medium --output-name random_medium_01 --seed 456
+python create_pointcloud.py --env-type random --difficulty hard --output-name random_hard_01 --seed 789
 ```
 
-### 2. Run Simulations (Module 2)
+### 5. Run Simulations
 
-After generating pointclouds, run simulations with simple commands:
-
-#### Basic Simulation
+기본 시뮬레이션 실행:
 
 ```bash
 # List available robot geometries
 python main.py --list-geometries
 
-# Run with static environment and geometry #1
-python main.py --target 5.0 5.0 --env static --geometry 1 --policy potential_field_pd
-
-# Run with pointcloud environment
-python main.py --target 6.0 3.0 --env my_env.ply --geometry 2 --policy rmp
-
-# Use different control policies
-python main.py --target 4.0 4.0 --env circle_env.ply --geometry 3 --policy potential_field
+# Run with specific environment
+python main.py --target 6.0 3.0 --env circles_only --geometry 2 --policy rmp
+python main.py --target 8.0 6.0 --env random_medium_01 --geometry 3 --policy potential_field
 ```
 
 #### Video Recording
 
 ```bash
-# Record basic 10-second video
-python record_video.py --target 5.0 5.0 --env static --geometry 1 --duration 10 --output demo.mp4
-
-# Record with pointcloud environment
-python record_video.py --target 6.0 4.0 --env dense_env.ply --geometry 2 --duration 15 --output pointcloud_demo.mp4
+# Record with organized environment
+python record_video.py --target 6.0 4.0 --env random_medium_01 --geometry 2 --duration 15 --output medium_demo.mp4
 
 # High quality recording
-python record_video.py --target 7.0 3.0 --env polygon_env.ply --geometry 4 --fps 60 --duration 12 --output high_quality.mp4
+python record_video.py --target 7.0 3.0 --env polygons_only --geometry 4 --fps 60 --duration 12 --output polygon_demo.mp4
 ```
 
-## Command Reference
+## 🔧 Command Reference
+
+### Quick Visualization (`pointcloud/utils/quick_visualize.py`) 🆕
+- `env_name`: Environment name or folder
+- `env_number`: Specific environment number (for large datasets)
+- `--show-info`: Display environment metadata
+- `--save-image`: Save visualization as image
+- `--no-show`: Don't display plot
+
+### Pose Generation (`pose/pose_pipeline.py`) 🆕
+- `ply_file`: PLY environment file path
+- `robot_id`: Robot ID (0-5)
+- `--num_poses`: Number of collision-free poses (default: 100)
+- `--output`: Output JSON filename
+- `--analyze`: Perform pose distribution analysis
+- `--safety_margin`: Safety margin for collision detection (default: 0.05)
+- `--max_attempts`: Maximum generation attempts (default: 1000)
+- `--seed`: Random seed (default: 42)
 
 ### Pointcloud Generation (`pointcloud/create_pointcloud.py`)
-- `--output_name NAME`: Output filename (without .ply extension)
-- `--resolution FLOAT`: Pointcloud resolution (default: 0.05)
-- `--noise_level FLOAT`: Noise level for points (default: 0.01)
-- `--clustering_eps FLOAT`: DBSCAN clustering epsilon (default: 0.3)
-- `--min_samples INT`: DBSCAN minimum samples (default: 5)
-- `--obstacle_type TYPE`: Obstacle reconstruction type - "polygon" or "circle" (default: polygon)
+**Basic Options:**
+- `--env-type TYPE`: Environment type - "static" or "random"
+- `--output-name NAME`: Output filename
+- `--difficulty LEVEL`: For random environments - "easy", "medium", "hard"
+- `--obstacle-types TYPES`: Space-separated list - "rectangle", "circle", "polygon", "curve"
+- `--seed INT`: Random seed for reproducible environments
+
+**Advanced Options:**
+- `--resolution FLOAT`: Pointcloud resolution in meters (default: 0.05)
+- `--noise-level FLOAT`: Sensor noise level (default: 0.01)
+- `--clustering-eps FLOAT`: DBSCAN clustering epsilon (default: 0.3)
+- `--min-samples INT`: DBSCAN minimum samples (default: 5)
 
 ### Main Simulation (`main.py`)
 - `--target X Y`: Target position (default: 5.0 5.0)
-- `--env ENV`: Environment - "static" or PLY filename (default: static)
+- `--env ENV`: Environment name or PLY filename (default: static)
 - `--geometry N`: Robot geometry ID (use --list-geometries to see options)
-- `--policy POLICY`: Control policy - "potential_field", "potential_field_pd", or "rmp" (default: potential_field_pd)
+- `--policy POLICY`: Control policy - "potential_field", "potential_field_pd", or "rmp"
 - `--list-geometries`: Show available robot geometries
 
 ### Video Recording (`record_video.py`)
 - `--target X Y`: Target position (default: 5.0 5.0)
-- `--env ENV`: Environment - "static" or PLY filename (default: static)
+- `--env ENV`: Environment name or PLY filename (default: static)
 - `--geometry N`: Robot geometry ID
 - `--policy POLICY`: Control policy (default: potential_field_pd)
 - `--duration SECONDS`: Recording duration (default: 10.0)
@@ -158,202 +298,82 @@ python record_video.py --target 7.0 3.0 --env polygon_env.ply --geometry 4 --fps
 
 ## Robot Geometry Configurations
 
-The robot supports multiple pre-defined geometry configurations managed in `robot_config.py`:
+6가지 사전 정의된 로봇 구성을 지원합니다:
 
 ```bash
 # List all available geometries
 python main.py --list-geometries
 ```
 
-Available configurations include:
-- **Geometry 1**: Rectangle links [3.0m, 2.5m, 2.0m] with thick profile
-- **Geometry 2**: Rectangle links [3.5m, 3.0m, 2.5m] with medium profile  
-- **Geometry 3**: Ellipse links [3.0m, 2.5m, 2.0m] with oval shape
-- **Geometry 4**: Ellipse links [3.5m, 3.0m, 2.5m] with extended reach
-- **Geometry 5**: Rectangle links [2.5m, 2.0m, 1.5m] with compact design
-- **Geometry 6**: Ellipse links [4.0m, 3.5m, 3.0m] with maximum reach
+- **Robot 0**: Standard Rectangle Robot (3.0/2.5/2.0 lengths)
+- **Robot 1**: Compact Robot (2.0/1.5/1.0 lengths) 
+- **Robot 2**: Extended Robot (4.0/3.0/2.5 lengths)
+- **Robot 3**: Standard Ellipse Robot (elliptical links)
+- **Robot 4**: Narrow Ellipse Robot (thin elliptical links)
+- **Robot 5**: Wide Ellipse Robot (wide elliptical links)
 
-Each geometry defines:
-- **Link lengths**: Determines robot reach and workspace
-- **Link shapes**: Rectangle or ellipse visual appearance
-- **Link dimensions**: Width/height for collision detection
-- **Total reach**: Maximum distance robot can extend
+## Data Formats
 
-## Control Policies & Visualization
-
-### Control Methods
-- **Potential Field**: Basic attractive force toward target + repulsive force from obstacles
-- **Potential Field PD**: Enhanced with PD control for stable convergence (default)
-- **RMP (Riemannian Motion Policies)**: Advanced control method using Riemannian metrics
-- **Jacobian Transpose**: Converts end-effector forces to joint torques
-- **Physics Simulation**: Box2D engine for accurate dynamics
-
-### Visualization Features
-- **Robot**: Gray links with configurable shapes (rectangular or elliptical)
-- **Target**: Red circle with white center point
-- **Obstacles**: Gray rectangles (static) or reconstructed from pointclouds
-- **Real-time Info**: Target position, control policy, distance, and geometry information
-- **Environment Types**: Static predefined or pointcloud-reconstructed environments
-
-## Complete Workflow Examples
-
-### Example 1: Basic Static Environment
-
-```bash
-# List available robot geometries
-python main.py --list-geometries
-
-# Run simulation with static environment
-python main.py --target 5.0 5.0 --env static --geometry 1 --policy potential_field_pd
-
-# Record video of the same setup
-python record_video.py --target 5.0 5.0 --env static --geometry 1 --duration 10 --output static_demo.mp4
+### Pose Data Format (JSON)
+```json
+{
+  "robot_id": 0,
+  "num_poses": 20,
+  "poses": [
+    [1.2449, -0.5018, -1.0823],  // Joint angles in radians
+    [0.9301, 0.3428, -1.0331],   // [joint1, joint2, joint3]
+    // ... more poses
+  ],
+  "statistics": {
+    "collision_rate": 0.32,
+    "success_rate": 0.68,
+    "poses_per_second": 392.4,
+    "environment_file": "circles_only.ply"
+  },
+  "format": "joint_angles_radians"
+}
 ```
 
-### Example 2: Pointcloud Environment Workflow
-
-```bash
-# Step 1: Generate pointcloud environment
-cd pointcloud
-python create_pointcloud.py --output_name complex_env --clustering_eps 0.25 --obstacle_type polygon
-
-# Step 2: Use the generated environment
-cd ..
-python main.py --target 6.0 4.0 --env complex_env.ply --geometry 3 --policy rmp
-
-# Step 3: Record video with the pointcloud environment
-python record_video.py --target 6.0 4.0 --env complex_env.ply --geometry 3 --policy rmp --duration 15 --output complex_env_demo.mp4
+### Environment Metadata Format (JSON)
+```json
+{
+  "environment_name": "circles_only",
+  "difficulty": "medium", 
+  "num_obstacles": 16,
+  "num_points": 7427,
+  "generation_parameters": {
+    "seed": 111,
+    "resolution": 0.03,
+    "obstacle_types": ["circle"]
+  }
+}
 ```
 
-### Example 3: Comparing Different Geometries
+## Performance Statistics
 
-```bash
-# Generate a test environment
-cd pointcloud
-python create_pointcloud.py --output_name test_env
+- **Pose Generation**: 392+ poses/sec
+- **Environment Loading**: <0.1s for typical environments
+- **Collision Detection**: Real-time for 10K+ point environments
+- **Large Dataset**: 21% of 10K circle environments (4,238 files, 205MB)
 
-# Test different robot geometries on the same environment
-cd ..
-python main.py --target 7.0 3.0 --env test_env.ply --geometry 1 --policy potential_field_pd  # Compact robot
-python main.py --target 7.0 3.0 --env test_env.ply --geometry 6 --policy potential_field_pd  # Extended reach robot
+## Development Status
 
-# Record comparison videos
-python record_video.py --target 7.0 3.0 --env test_env.ply --geometry 1 --duration 10 --output compact_robot.mp4
-python record_video.py --target 7.0 3.0 --env test_env.ply --geometry 6 --duration 10 --output extended_robot.mp4
-```
+### ✅ Completed Features
+- Dual-module architecture (pointcloud + simulation)
+- 8 pre-generated environment types
+- Advanced shape detection and reconstruction
+- Quick environment visualization system
+- Complete concave obstacle generation pipeline
+- Robot pose generation with collision detection
+- Video recording and real-time simulation
+- Multiple robot geometries and control policies
 
-## Advanced Pointcloud Generation
+### 🚧 Current Focus
+- Large-scale pose dataset generation
+- Trajectory planning integration
+- Path validation between poses
+- Advanced collision detection optimization
 
-### Available Options for Pointcloud Creation
+---
 
-The `pointcloud/create_pointcloud.py` script supports extensive customization:
-
-```bash
-cd pointcloud
-
-# High-resolution environment for detailed simulation
-python create_pointcloud.py --output_name high_res_env --resolution 0.02 --noise_level 0.005
-
-# Coarse environment for faster simulation
-python create_pointcloud.py --output_name coarse_env --resolution 0.1 --noise_level 0.02
-
-# Dense clustering for complex obstacles
-python create_pointcloud.py --output_name dense_obstacles --clustering_eps 0.15 --min_samples 8
-
-# Loose clustering for simpler obstacles  
-python create_pointcloud.py --output_name simple_obstacles --clustering_eps 0.4 --min_samples 3
-
-# Different obstacle reconstruction types
-python create_pointcloud.py --output_name circular_env --obstacle_type circle
-python create_pointcloud.py --output_name polygonal_env --obstacle_type polygon
-
-# See all available options
-python create_pointcloud.py --help
-```
-
-### Environment Data Management
-
-- **Storage**: All pointcloud files are stored in `pointcloud/data/` as PLY format
-- **Metadata**: Clustering and obstacle settings are embedded in PLY file headers
-- **Loading**: The main simulation automatically reads metadata when loading PLY files
-- **Format**: Only PLY format is supported (legacy formats have been removed)
-
-## Keyboard Shortcuts
-
-- **ESC**: Exit program
-- **Close Window**: Terminate simulation
-
-## Troubleshooting
-
-### Robot Not Moving
-1. **Target too close**: If target is very close to robot base, forces might be too small
-2. **Target out of reach**: Check if target is within robot's maximum reach (varies by geometry)
-3. **Singularity issues**: Movement is limited near kinematic singularities  
-4. **Obstacle blocking**: Robot may be unable to find path around obstacles
-
-### Video Recording Issues
-```bash
-# Reinstall OpenCV if video recording fails
-uv pip install --upgrade opencv-python
-```
-
-### Pointcloud Environment Issues
-```bash
-# Verify pointcloud file exists
-ls pointcloud/data/
-
-# Check file format (only PLY supported)
-file pointcloud/data/your_file.ply
-
-# Regenerate pointcloud if loading fails
-cd pointcloud
-python create_pointcloud.py --output_name new_env
-```
-
-### Geometry Selection Issues
-```bash
-# List available geometries and their properties
-python main.py --list-geometries
-
-# Use a valid geometry ID (typically 1-6)
-python main.py --target 5.0 5.0 --env static --geometry 1
-```
-
-### Environment Loading Issues
-```bash
-# For static environment, use "static"
-python main.py --target 5.0 5.0 --env static --geometry 1
-
-# For pointcloud files, use the PLY filename (with or without .ply extension)
-python main.py --target 5.0 5.0 --env my_env.ply --geometry 1
-python main.py --target 5.0 5.0 --env my_env --geometry 1
-```
-
-## Technical Details
-
-### Architecture Benefits
-- **Separation of Concerns**: Pointcloud generation is completely separate from simulation
-- **Simplified CLI**: Main simulation only requires 4 core arguments (target, env, geometry, policy)
-- **Reusable Environments**: Generate pointclouds once, use in multiple simulations
-- **Flexible Geometry**: Easy switching between robot configurations without code changes
-- **Batch Processing**: Pointcloud module supports future batch/random generation features
-
-### Dependencies
-- **Physics Engine**: Box2D for realistic dynamics simulation
-- **Rendering**: pygame for real-time visualization
-- **Video Recording**: OpenCV for MP4 video generation
-- **Pointcloud Processing**: scikit-learn (DBSCAN clustering), plyfile (PLY format I/O)
-- **Control Systems**: NumPy for Jacobian calculations and control algorithms
-
-### File Formats
-- **Pointclouds**: PLY format only (legacy formats removed for consistency)
-- **Videos**: MP4 format with configurable FPS
-- **Metadata**: Clustering and obstacle settings embedded in PLY headers
-
-### Performance Considerations
-- **Resolution**: Lower pointcloud resolution (e.g., 0.1) for faster loading
-- **Clustering**: Fewer min_samples and larger eps for simpler obstacle reconstruction
-- **Geometry**: Simpler geometries (rectangles) render faster than ellipses
-- **Video**: Lower FPS (e.g., 30) for smaller file sizes
-
-This project demonstrates a modular approach to robotics simulation with clean separation between environment generation and robot control, making it suitable for research, education, and development workflows.
+*For detailed development history and technical improvements, see the project's Git history and TODO.md file.*
