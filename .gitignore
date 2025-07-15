@@ -128,3 +128,7 @@ exports/
 data/
 *.ply
 *.mp4
+
+# Development files
+TODO.md
+fm/
